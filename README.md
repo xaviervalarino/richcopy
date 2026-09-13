@@ -8,10 +8,10 @@ Uses Apple's native CommonMark parser in `Foundation` (`NSAttributedString(markd
 
 ```bash
 cd ~/dev/richcopy
-make install
+make link
 ```
 
-Installs to `~/scripts/richcopy` (which is in `$PATH`).
+Symlinks `/usr/local/bin/richcopy` -> `~/dev/richcopy/bin/richcopy` (keeps `dotfiles` clean).
 
 ## Usage
 

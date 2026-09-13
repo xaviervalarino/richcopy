@@ -1,21 +1,27 @@
-PREFIX ?= $(HOME)/scripts
-BIN = $(PREFIX)/richcopy
+PREFIX ?= /usr/local/bin
+BIN_DIR = bin
+TARGET = $(BIN_DIR)/richcopy
 
-.PHONY: all build install test clean
+.PHONY: all build install link test clean
 
-all: install
+all: build
 
 build:
-	@mkdir -p bin
-	swiftc -O -o bin/richcopy main.swift
+	@mkdir -p $(BIN_DIR)
+	swiftc -O -o $(TARGET) main.swift
 
-install:
+link: build
 	@mkdir -p $(PREFIX)
-	swiftc -O -o $(BIN) main.swift
-	@echo "Installed richcopy to $(BIN)"
+	ln -sf $(CURDIR)/$(TARGET) $(PREFIX)/richcopy
+	@echo "Linked $(PREFIX)/richcopy -> $(CURDIR)/$(TARGET)"
 
-test: install
-	@$(BIN) --test
+install: build
+	@mkdir -p $(PREFIX)
+	cp $(TARGET) $(PREFIX)/richcopy
+	@echo "Installed $(TARGET) to $(PREFIX)/richcopy"
+
+test: build
+	@$(TARGET) --test
 
 clean:
-	rm -rf bin
+	rm -rf $(BIN_DIR)
