@@ -54,6 +54,18 @@ Passing `--no-rtf` skips RTF generation entirely and copies in **~20 ms**:
 - **Fully supported without RTF:** **Slack**, **Notion**, **Google Docs**, **Apple Mail**, **Apple Notes**, **Discord**, and all Chromium/WebKit web browsers pull `public.html` directly and paste rich text with full styling.
 - **When RTF is needed:** Native Cocoa `NSTextView` applications (such as **TextEdit** in rich text mode or Scrivener) rely primarily on `public.rtf`.
 
+## AI Agent Skill (Claude Code & Antigravity)
+
+`richcopy` includes a built-in skill so AI coding assistants (Claude Code, Antigravity) automatically format rich clipboard text on request:
+
+```bash
+# Install the skill for Claude Code and Antigravity
+richcopy --install-skill
+
+# Print the SKILL.md definition to stdout (e.g., for custom agent rules)
+richcopy --print-skill
+```
+
 ## Installation
 
 ```bash
