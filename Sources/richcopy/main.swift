@@ -1,5 +1,5 @@
 import Foundation
-import AppKit
+import RichcopyCore
 
 func printUsage() {
     let usage = """
@@ -16,24 +16,13 @@ func printUsage() {
     print(usage)
 }
 
-func copyMarkdownToPasteboard(_ markdown: String) -> Int32 {
-    let trimmed = markdown.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !trimmed.isEmpty else {
-        fputs("richcopy: error: empty markdown input\n", stderr)
-        return 1
-    }
-
+func run(markdown: String) -> Int32 {
     do {
-        let attr = try NSAttributedString(markdown: markdown)
-        let range = NSRange(location: 0, length: attr.length)
-        let rtfData = try attr.data(from: range, documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
-        let htmlData = try attr.data(from: range, documentAttributes: [.documentType: NSAttributedString.DocumentType.html])
-
-        let pb = NSPasteboard.general
-        pb.clearContents()
-        pb.setData(rtfData, forType: .rtf)
-        pb.setData(htmlData, forType: .html)
-        pb.setString(attr.string, forType: .string)
+        let rendered = try render(markdown: markdown)
+        guard copy(rendered) else {
+            fputs("richcopy: error: failed to write to pasteboard\n", stderr)
+            return 1
+        }
         return 0
     } catch {
         fputs("richcopy: error: \(error.localizedDescription)\n", stderr)
@@ -49,13 +38,13 @@ if args.count > 1 {
         printUsage()
         exit(0)
     } else if !first.hasPrefix("-") {
-        exit(copyMarkdownToPasteboard(first))
+        exit(run(markdown: first))
     }
 }
 
 if let data = try? FileHandle.standardInput.readToEnd(),
    let input = String(data: data, encoding: .utf8) {
-    exit(copyMarkdownToPasteboard(input))
+    exit(run(markdown: input))
 } else {
     fputs("richcopy: error reading from stdin\n", stderr)
     exit(1)

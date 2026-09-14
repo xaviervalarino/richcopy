@@ -49,8 +49,11 @@ Compiles the native binary into `bin/richcopy` and symlinks it to `/usr/local/bi
 make test
 ```
 
+Runs the [Swift Testing](https://developer.apple.com/documentation/testing) suite via `swift test`. Tests write to a private named pasteboard, so running them never touches your real clipboard.
+
 ## Technical Details
 
-- **Size:** ~70 KB standalone native binary.
+- **Size:** ~110 KB standalone native binary.
 - **Speed:** ~5ms execution time.
 - **Dependencies:** Zero external dependencies. Built directly on macOS's native `Foundation` CommonMark engine and Cocoa `AppKit` pasteboard APIs.
+- **Structure:** Standard Swift Package Manager layout — `RichcopyCore` (library with the render/copy logic), `richcopy` (CLI executable), `RichcopyTests` (test target).
