@@ -21,7 +21,7 @@ install: build
 	@echo "Installed $(TARGET) to $(PREFIX)/richcopy"
 
 test: build
-	@$(TARGET) --test
+	@swift Tests/RichcopyTests.swift
 
 clean:
 	rm -rf $(BIN_DIR)

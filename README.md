@@ -1,37 +1,56 @@
 # richcopy
 
-A fast, zero-dependency macOS CLI utility that reads Markdown from `stdin` (or arguments) and copies it to the system pasteboard simultaneously as **HTML**, **RTF**, and **Plain Text**.
+Pipe Markdown from your terminal, paste styled rich text anywhere on macOS.
 
-Uses Apple's native CommonMark parser in `Foundation` (`NSAttributedString(markdown:)`).
+No more broken raw asterisks or unformatted text when sharing terminal output, PR summaries, or release notes into **Slack**, **Notion**, **Google Docs**, or **Apple Mail**.
 
-## Installation
+## How It Works
 
-```bash
-cd ~/dev/richcopy
-make link
+`richcopy` takes Markdown and registers all standard macOS pasteboard flavors simultaneously in a single atomic clipboard write. You never have to specify the target format—the destination app automatically selects its preferred representation:
+
+```text
+                  ┌─▶ Slack / Notion / Google Docs / Chrome ──▶ pulls "public.html"
+                  │
+[NSPasteboard] ───┼─▶ Apple Mail / TextEdit / Pages         ──▶ pulls "public.rtf"
+(holds all 3)     │
+                  └─▶ Terminal / VS Code / Plain Text       ──▶ pulls "public.utf8-plain-text"
 ```
 
-Symlinks `/usr/local/bin/richcopy` -> `~/dev/richcopy/bin/richcopy` (keeps `dotfiles` clean).
+- **Slack, Notion, Google Docs, Chrome:** Pastes formatted bold, italics, lists, and clickable hyperlinks.
+- **Apple Mail, TextEdit, Pages:** Pastes native rich text (`public.rtf`).
+- **Terminal, Code Editors:** Pastes clean plain text (`public.utf8-plain-text`).
 
 ## Usage
 
 ```bash
-# Pipe from echo or cat
-echo "**Team announcement**: [Review PR #1661](https://github.com/...)" | richcopy
+# Pipe from command output
+echo "**Release complete**: [PR #1661](https://example.com)" | richcopy
 
-# Read a file
+# Copy from a file
 richcopy < draft.md
 
-# Direct argument
-richcopy "This is **bold** with a [link](https://apple.com)"
-
-# Run unit tests
-richcopy --test
+# Pass as a direct string
+richcopy "Review options: **Option A** vs *Option B*"
 ```
 
-## How It Works
+## Installation
 
-When pasted into:
-- **Slack, Notion, Google Docs, Chrome**: Receives `public.html` with rich formatting, clickable links, and bullet lists.
-- **Apple Mail, TextEdit, Pages**: Receives `public.rtf`.
-- **Terminal, VS Code**: Receives `public.utf8-plain-text`.
+```bash
+git clone https://github.com/xavier-greenline/richcopy.git ~/dev/richcopy
+cd ~/dev/richcopy
+make link
+```
+
+Compiles the native binary into `bin/richcopy` and symlinks it to `/usr/local/bin/richcopy`.
+
+## Tests
+
+```bash
+make test
+```
+
+## Technical Details
+
+- **Size:** ~70 KB standalone native binary.
+- **Speed:** ~5ms execution time.
+- **Dependencies:** Zero external dependencies. Built directly on macOS's native `Foundation` CommonMark engine and Cocoa `AppKit` pasteboard APIs.
