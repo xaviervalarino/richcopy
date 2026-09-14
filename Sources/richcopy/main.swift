@@ -107,9 +107,6 @@ struct Richcopy: ParsableCommand {
         """
     )
 
-    @Flag(name: [.customShort("V"), .long], help: "Show the version.")
-    var version = false
-
     @Flag(name: .customLong("no-rtf"), help: "Skip RTF generation for ultra-fast copying (HTML + plain text). Most macOS apps (Slack, Notion, Google Docs, Apple Mail, Apple Notes) paste rich text directly from HTML.")
     var noRTF = false
 
@@ -118,6 +115,9 @@ struct Richcopy: ParsableCommand {
 
     @Flag(name: .customLong("print-skill"), help: "Print the SKILL.md definition to standard output.")
     var printSkill = false
+
+    @Flag(name: [.customShort("V"), .long], help: "Show the version.")
+    var version = false
 
     @Argument(help: "Markdown text to copy. If omitted, reads from standard input.")
     var text: [String] = []
