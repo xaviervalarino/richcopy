@@ -17,20 +17,27 @@ public enum RichcopyError: Error, LocalizedError {
 
 /// The three pasteboard flavors generated from one Markdown source.
 public struct RenderedMarkdown {
-    public let rtf: Data
+    public let rtf: Data?
     public let html: Data
     public let plainText: String
+
+    public init(rtf: Data?, html: Data, plainText: String) {
+        self.rtf = rtf
+        self.html = html
+        self.plainText = plainText
+    }
 }
 
 /// Parses CommonMark + GFM (tables, strikethrough, autolinks) and renders
 /// HTML, RTF, and plain-text representations.
 ///
 /// Apple's parser emits semantic presentation intents rather than visual
-/// styling, so this walks the intent tree and emits real HTML; the RTF
-/// flavor is derived from that HTML. The plain-text flavor is the original
+/// styling, so this walks the intent tree to emit real HTML. The RTF flavor
+/// is generated directly via native Cocoa text attributes for speed, falling
+/// back to the HTML importer for tables. The plain-text flavor is the original
 /// Markdown source, which is lossless and pastes cleanly into editors.
 @MainActor
-public func render(markdown: String) throws -> RenderedMarkdown {
+public func render(markdown: String, includeRTF: Bool = true) throws -> RenderedMarkdown {
     let trimmed = markdown.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else {
         throw RichcopyError.emptyInput
@@ -41,20 +48,29 @@ public func render(markdown: String) throws -> RenderedMarkdown {
         options: .init(interpretedSyntax: .full, failurePolicy: .returnPartiallyParsedIfPossible)
     )
     let html = htmlDocument(body: htmlBody(from: attributed))
+    let rtf: Data?
+    if includeRTF {
+        rtf = try generateRTF(from: attributed, fallbackHTML: html)
+    } else {
+        rtf = nil
+    }
     return RenderedMarkdown(
-        rtf: try rtfData(fromHTML: html),
+        rtf: rtf,
         html: Data(html.utf8),
         plainText: trimmed
     )
 }
 
-/// Registers all three flavors on the pasteboard in a single atomic write.
+/// Registers all available flavors on the pasteboard in a single atomic write.
 /// Destination apps pick the richest representation they support.
 @MainActor
 @discardableResult
 public func copy(_ rendered: RenderedMarkdown, to pasteboard: NSPasteboard = .general) -> Bool {
     pasteboard.clearContents()
-    let rtfOK = pasteboard.setData(rendered.rtf, forType: .rtf)
+    var rtfOK = true
+    if let rtf = rendered.rtf {
+        rtfOK = pasteboard.setData(rtf, forType: .rtf)
+    }
     let htmlOK = pasteboard.setData(rendered.html, forType: .html)
     let stringOK = pasteboard.setString(rendered.plainText, forType: .string)
     return rtfOK && htmlOK && stringOK
@@ -212,7 +228,137 @@ private func htmlDocument(body: String) -> String {
     """
 }
 
-// MARK: - HTML → RTF
+// MARK: - RTF Generation
+
+@MainActor
+private func generateRTF(from attributed: AttributedString, fallbackHTML: String) throws -> Data {
+    let hasTable = attributed.runs.contains { run in
+        run.presentationIntent?.components.contains {
+            if case .table = $0.kind { return true }
+            return false
+        } ?? false
+    }
+    if hasTable {
+        return try rtfData(fromHTML: fallbackHTML)
+    }
+    return try directRTFData(from: attributed)
+}
+
+@MainActor
+private func directRTFData(from attributed: AttributedString) throws -> Data {
+    let out = NSMutableAttributedString()
+    var lastBlockIdentity: Int?
+    var isNewBlock = true
+
+    for run in attributed.runs {
+        let path = run.presentationIntent.map { Array($0.components.reversed()) } ?? []
+        let inline = run.inlinePresentationIntent ?? []
+
+        var isHeader = false
+        var headerLevel = 0
+        var isListItem = false
+        var isCodeBlock = false
+        var isBlockQuote = false
+        var isThematicBreak = false
+
+        for comp in path {
+            switch comp.kind {
+            case .header(let level):
+                isHeader = true
+                headerLevel = max(1, min(level, 6))
+            case .listItem:
+                isListItem = true
+            case .codeBlock:
+                isCodeBlock = true
+            case .blockQuote:
+                isBlockQuote = true
+            case .thematicBreak:
+                isThematicBreak = true
+            default:
+                break
+            }
+        }
+
+        let currentIdentity = path.last?.identity
+        if currentIdentity != lastBlockIdentity {
+            if lastBlockIdentity != nil {
+                out.append(NSAttributedString(string: "\n"))
+            }
+            lastBlockIdentity = currentIdentity
+            isNewBlock = true
+        }
+
+        if isThematicBreak {
+            out.append(NSAttributedString(string: "──────────\n", attributes: [.foregroundColor: NSColor.separatorColor]))
+            continue
+        }
+
+        if inline.contains(.lineBreak) {
+            out.append(NSAttributedString(string: "\n"))
+            continue
+        }
+        if inline.contains(.softBreak) {
+            out.append(NSAttributedString(string: " "))
+            continue
+        }
+
+        if isNewBlock {
+            isNewBlock = false
+            if isListItem {
+                out.append(NSAttributedString(string: "•\t", attributes: [.font: NSFont.systemFont(ofSize: 13)]))
+            }
+        }
+
+        var text = String(attributed[run.range].characters)
+        if text.hasPrefix("[x] ") || text.hasPrefix("[X] ") {
+            text = "☑ " + text.dropFirst(4)
+        } else if text.hasPrefix("[ ] ") {
+            text = "☐ " + text.dropFirst(4)
+        }
+
+        var fontSize: CGFloat = 13
+        if isHeader {
+            switch headerLevel {
+            case 1: fontSize = 24
+            case 2: fontSize = 18
+            case 3: fontSize = 15
+            case 4: fontSize = 14
+            default: fontSize = 13
+            }
+        }
+
+        var font: NSFont
+        if isCodeBlock || inline.contains(.code) {
+            font = NSFont.monospacedSystemFont(ofSize: max(11, fontSize - 1), weight: .regular)
+        } else if isHeader || inline.contains(.stronglyEmphasized) {
+            font = NSFont.boldSystemFont(ofSize: fontSize)
+        } else {
+            font = NSFont.systemFont(ofSize: fontSize)
+        }
+
+        if inline.contains(.emphasized) {
+            font = NSFontManager.shared.convert(font, toHaveTrait: .italicFontMask)
+        }
+
+        var attrs: [NSAttributedString.Key: Any] = [.font: font]
+        if inline.contains(.strikethrough) {
+            attrs[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+        }
+        if let link = run.link {
+            attrs[.link] = link
+        }
+        if isBlockQuote {
+            attrs[.foregroundColor] = NSColor.secondaryLabelColor
+        }
+
+        out.append(NSAttributedString(string: text, attributes: attrs))
+    }
+
+    return try out.data(
+        from: NSRange(location: 0, length: out.length),
+        documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+    )
+}
 
 @MainActor
 private func rtfData(fromHTML html: String) throws -> Data {

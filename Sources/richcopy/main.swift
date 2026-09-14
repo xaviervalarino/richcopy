@@ -20,6 +20,9 @@ struct Richcopy: ParsableCommand {
     @Flag(name: [.customShort("V"), .long], help: "Show the version.")
     var version = false
 
+    @Flag(name: .customLong("no-rtf"), help: "Skip RTF generation for ultra-fast copying (HTML + plain text). Most macOS apps (Slack, Notion, Google Docs, Apple Mail, Apple Notes) paste rich text directly from HTML.")
+    var noRTF = false
+
     @Argument(help: "Markdown text to copy. If omitted, reads from standard input.")
     var text: [String] = []
 
@@ -40,9 +43,10 @@ struct Richcopy: ParsableCommand {
             input = stdinText
         }
 
+        let skipRTF = noRTF
         let success = MainActor.assumeIsolated {
             do {
-                let rendered = try render(markdown: input)
+                let rendered = try render(markdown: input, includeRTF: !skipRTF)
                 guard copy(rendered) else {
                     fputs("richcopy: error: failed to write to pasteboard\n", stderr)
                     return false

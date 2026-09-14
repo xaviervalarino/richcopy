@@ -41,7 +41,18 @@ richcopy < draft.md
 
 # Pass as a direct string
 richcopy "Review options: **Option A** vs *Option B*"
+
+# Ultra-fast mode (skip RTF generation)
+richcopy --no-rtf < draft.md
 ```
+
+### The `--no-rtf` Flag
+
+By default, `richcopy` generates all three clipboard representations (`public.html`, `public.rtf`, and `public.utf8-plain-text`).
+
+Passing `--no-rtf` skips RTF generation entirely and copies in **~20 ms**:
+- **Fully supported without RTF:** **Slack**, **Notion**, **Google Docs**, **Apple Mail**, **Apple Notes**, **Discord**, and all Chromium/WebKit web browsers pull `public.html` directly and paste rich text with full styling.
+- **When RTF is needed:** Native Cocoa `NSTextView` applications (such as **TextEdit** in rich text mode or Scrivener) rely primarily on `public.rtf`.
 
 ## Installation
 
@@ -63,7 +74,7 @@ Runs the [Swift Testing](https://developer.apple.com/documentation/testing) suit
 
 ## Technical Details
 
-- **Size:** ~160 KB standalone native binary.
-- **Dependencies:** Zero external dependencies. Built directly on macOS's native `Foundation` CommonMark engine and Cocoa `AppKit` pasteboard APIs.
-- **Rendering:** Apple's Markdown parser emits semantic presentation intents, not visual styling — richcopy walks that intent tree to emit real HTML (`<h1>`, `<strong>`, `<table>`…), then derives the RTF flavor from that HTML via the Cocoa HTML importer.
+- **Size:** ~1.6 MB standalone native binary.
+- **Dependencies:** Uses `apple/swift-argument-parser` for standard CLI handling (`-h`, `-V`, `--no-rtf`).
+- **Rendering:** Apple's Markdown parser emits semantic presentation intents rather than visual styling. `richcopy` walks the intent tree to emit clean HTML, while generating RTF directly through native Cocoa `NSAttributedString` text attributes (falling back to WebKit for tables).
 - **Structure:** Standard Swift Package Manager layout — `RichcopyCore` (library with the render/copy logic), `richcopy` (CLI executable), `RichcopyTests` (test target).

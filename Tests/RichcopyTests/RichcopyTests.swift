@@ -79,10 +79,27 @@ private func renderedHTML(_ markdown: String) throws -> String {
 
 @MainActor @Test func rtfIsStyledRTFDocument() throws {
     let rendered = try render(markdown: sample)
-    let rtf = try #require(String(data: rendered.rtf, encoding: .utf8))
+    let rtfData = try #require(rendered.rtf)
+    let rtf = try #require(String(data: rtfData, encoding: .utf8))
     #expect(rtf.hasPrefix("{\\rtf1"))
     #expect(rtf.contains("\\b"))
     #expect(rtf.contains("HYPERLINK"))
+}
+
+@MainActor @Test func noRTFOptionSkipsRTFFlavor() throws {
+    let rendered = try render(markdown: sample, includeRTF: false)
+    #expect(rendered.rtf == nil)
+    #expect(!rendered.html.isEmpty)
+    #expect(rendered.plainText == sample)
+
+    let pasteboard = NSPasteboard(name: NSPasteboard.Name("richcopy.tests.nortf"))
+    defer { pasteboard.releaseGlobally() }
+
+    #expect(copy(rendered, to: pasteboard))
+    let types = pasteboard.types ?? []
+    #expect(!types.contains(.rtf))
+    #expect(types.contains(.html))
+    #expect(types.contains(.string))
 }
 
 // MARK: - Plain-text flavor
