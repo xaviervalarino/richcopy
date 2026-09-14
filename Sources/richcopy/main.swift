@@ -1,52 +1,57 @@
+import ArgumentParser
 import Foundation
 import RichcopyCore
 
-func printUsage() {
-    let usage = """
-    Usage:
-      echo "**bold** [link](https://example.com)" | richcopy
-      richcopy < file.md
-      richcopy "Direct **markdown** string"
+struct Richcopy: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "richcopy",
+        abstract: "Copies Markdown from your terminal to the macOS clipboard as rich text.",
+        discussion: """
+        Pastes with full formatting (bold, italics, links, lists) into Slack,
+        Notion, Google Docs, Apple Mail, and other macOS apps.
 
-    Description:
-      Copies Markdown from your terminal to the macOS clipboard as rich text.
-      Pastes with full formatting (bold, italics, links, lists) into Slack,
-      Notion, Google Docs, Apple Mail, and other macOS apps.
-    """
-    print(usage)
-}
+        Examples:
+          echo "**bold** [link](https://example.com)" | richcopy
+          richcopy < file.md
+          richcopy "Direct **markdown** string"
+        """,
+        version: "1.0.0"
+    )
 
-@MainActor
-func run(markdown: String) -> Int32 {
-    do {
-        let rendered = try render(markdown: markdown)
-        guard copy(rendered) else {
-            fputs("richcopy: error: failed to write to pasteboard\n", stderr)
-            return 1
+    @Argument(help: "Markdown text to copy. If omitted, reads from standard input.")
+    var text: [String] = []
+
+    func run() throws {
+        let input: String
+        if !text.isEmpty {
+            input = text.joined(separator: " ")
+        } else {
+            guard let data = try? FileHandle.standardInput.readToEnd(),
+                  let stdinText = String(data: data, encoding: .utf8) else {
+                fputs("richcopy: error reading from stdin\n", stderr)
+                throw ExitCode.failure
+            }
+            input = stdinText
         }
-        return 0
-    } catch {
-        fputs("richcopy: error: \(error.localizedDescription)\n", stderr)
-        return 1
+
+        let success = MainActor.assumeIsolated {
+            do {
+                let rendered = try render(markdown: input)
+                guard copy(rendered) else {
+                    fputs("richcopy: error: failed to write to pasteboard\n", stderr)
+                    return false
+                }
+                return true
+            } catch {
+                fputs("richcopy: error: \(error.localizedDescription)\n", stderr)
+                return false
+            }
+        }
+
+        if !success {
+            throw ExitCode.failure
+        }
     }
 }
 
-let args = CommandLine.arguments
-
-if args.count > 1 {
-    let first = args[1]
-    if first == "--help" || first == "-h" {
-        printUsage()
-        exit(0)
-    } else if !first.hasPrefix("-") {
-        exit(run(markdown: first))
-    }
-}
-
-if let data = try? FileHandle.standardInput.readToEnd(),
-   let input = String(data: data, encoding: .utf8) {
-    exit(run(markdown: input))
-} else {
-    fputs("richcopy: error reading from stdin\n", stderr)
-    exit(1)
-}
+Richcopy.main()
