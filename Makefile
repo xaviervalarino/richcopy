@@ -7,7 +7,7 @@ TARGET = $(BIN_DIR)/richcopy
 CLT_TESTING_PLUGINS = /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing
 SWIFT_TEST_FLAGS = $(shell test -d $(CLT_TESTING_PLUGINS) && echo -Xswiftc -plugin-path -Xswiftc $(CLT_TESTING_PLUGINS))
 
-.PHONY: all build install link test clean install-skill
+.PHONY: all build install link test clean
 
 all: build
 
@@ -25,9 +25,6 @@ install: build
 	@mkdir -p $(PREFIX)
 	cp $(TARGET) $(PREFIX)/richcopy
 	@echo "Installed $(TARGET) to $(PREFIX)/richcopy"
-
-install-skill: build
-	./$(TARGET) --install-skill
 
 test:
 	swift test $(SWIFT_TEST_FLAGS)
