@@ -136,3 +136,13 @@ private func renderedHTML(_ markdown: String) throws -> String {
     let readBack = try #require(pasteboard.string(forType: .string))
     #expect(readBack.contains("Navigation Review"))
 }
+
+// MARK: - Agent Skill Definition
+
+@Test func skillDefinitionIsValid() {
+    #expect(!richcopySkillDefinition.isEmpty)
+    #expect(richcopySkillDefinition.hasPrefix("---\nname: richcopy\n"))
+    #expect(richcopySkillDefinition.contains("description:"))
+    #expect(richcopySkillDefinition.contains("cat <<'EOF' | richcopy --no-rtf"))
+    #expect(richcopySkillDefinition.contains("pbcopy"))
+}
