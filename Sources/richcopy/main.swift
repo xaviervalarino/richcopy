@@ -16,6 +16,7 @@ func printUsage() {
     print(usage)
 }
 
+@MainActor
 func run(markdown: String) -> Int32 {
     do {
         let rendered = try render(markdown: markdown)

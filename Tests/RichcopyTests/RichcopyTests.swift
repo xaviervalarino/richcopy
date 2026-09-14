@@ -9,38 +9,100 @@ This is **bold** and *italic* with a [link](https://example.com) and `code`.
 - Item 2
 """
 
-@Test func parsesCommonMarkIntoAllFlavors() throws {
-    let rendered = try render(markdown: sample)
-    #expect(!rendered.rtf.isEmpty)
-    #expect(!rendered.html.isEmpty)
-    #expect(!rendered.plainText.isEmpty)
+@MainActor
+private func renderedHTML(_ markdown: String) throws -> String {
+    let rendered = try render(markdown: markdown)
+    return try #require(String(data: rendered.html, encoding: .utf8))
 }
 
-@Test func htmlPreservesLinksAndText() throws {
-    let rendered = try render(markdown: sample)
-    let html = try #require(String(data: rendered.html, encoding: .utf8))
-    #expect(html.contains("https://example.com"))
-    #expect(html.contains("bold"))
+// MARK: - HTML flavor
+
+@MainActor @Test func headingsGetRealTags() throws {
+    let html = try renderedHTML("# Big\n\n## Small")
+    #expect(html.contains("<h1>Big</h1>"))
+    #expect(html.contains("<h2>Small</h2>"))
 }
 
-@Test func rtfIsValidRTFDocument() throws {
+@MainActor @Test func inlineStylesGetRealTags() throws {
+    let html = try renderedHTML("**bold** *italic* ~~struck~~ `code`")
+    #expect(html.contains("<strong>bold</strong>"))
+    #expect(html.contains("<em>italic</em>"))
+    #expect(html.contains("<del>struck</del>"))
+    #expect(html.contains("<code>code</code>"))
+}
+
+@MainActor @Test func linksAndAutolinksWork() throws {
+    let html = try renderedHTML("[named](https://example.com/a) and bare https://example.com/b")
+    #expect(html.contains("<a href=\"https://example.com/a\">named</a>"))
+    #expect(html.contains("<a href=\"https://example.com/b\">"))
+}
+
+@MainActor @Test func listsGetStructure() throws {
+    let html = try renderedHTML("- one\n- two\n\n1. first\n2. second")
+    #expect(html.contains("<ul>"))
+    #expect(html.contains("<ol>"))
+    #expect(html.contains("<li><p>one</p></li>"))
+}
+
+@MainActor @Test func tablesRenderWithAlignment() throws {
+    let html = try renderedHTML("""
+    | Name | Count |
+    | ---- | ----: |
+    | API  | 42    |
+    """)
+    #expect(html.contains("<table>"))
+    #expect(html.contains("<thead><tr><th>Name</th>"))
+    #expect(html.contains("<td style=\"text-align:right\">42</td>"))
+    #expect(html.contains("<td>API</td>"))
+}
+
+@MainActor @Test func taskListsGetCheckboxes() throws {
+    let html = try renderedHTML("- [x] shipped\n- [ ] open")
+    #expect(html.contains("☑ shipped"))
+    #expect(html.contains("☐ open"))
+}
+
+@MainActor @Test func codeBlocksAndQuotesAndRules() throws {
+    let html = try renderedHTML("```swift\nlet x = 1\n```\n\n> quoted\n\n---")
+    #expect(html.contains("<pre><code class=\"language-swift\">"))
+    #expect(html.contains("let x = 1"))
+    #expect(html.contains("<blockquote>"))
+    #expect(html.contains("<hr>"))
+}
+
+@MainActor @Test func htmlSpecialCharactersAreEscaped() throws {
+    let html = try renderedHTML("a < b & c > d")
+    #expect(html.contains("a &lt; b &amp; c &gt; d"))
+}
+
+// MARK: - RTF flavor
+
+@MainActor @Test func rtfIsStyledRTFDocument() throws {
     let rendered = try render(markdown: sample)
     let rtf = try #require(String(data: rendered.rtf, encoding: .utf8))
     #expect(rtf.hasPrefix("{\\rtf1"))
+    #expect(rtf.contains("\\b"))
+    #expect(rtf.contains("HYPERLINK"))
 }
 
-@Test func plainTextStripsMarkdownSyntax() throws {
-    let rendered = try render(markdown: "This is **bold** text")
-    #expect(rendered.plainText == "This is bold text")
+// MARK: - Plain-text flavor
+
+@MainActor @Test func plainTextIsOriginalMarkdown() throws {
+    let rendered = try render(markdown: sample + "\n")
+    #expect(rendered.plainText == sample)
 }
 
-@Test func emptyInputThrows() {
+// MARK: - Errors
+
+@MainActor @Test func emptyInputThrows() {
     #expect(throws: RichcopyError.self) {
         try render(markdown: "   \n  ")
     }
 }
 
-@Test func registersAllThreeFlavorsOnPasteboard() throws {
+// MARK: - Pasteboard
+
+@MainActor @Test func registersAllThreeFlavorsOnPasteboard() throws {
     let rendered = try render(markdown: sample)
 
     // Private pasteboard so tests never clobber the user's clipboard.

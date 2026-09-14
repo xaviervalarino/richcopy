@@ -16,9 +16,19 @@ No more broken raw asterisks or unformatted text when sharing terminal output, P
                   └─▶ Terminal / VS Code / Plain Text       ──▶ pulls "public.utf8-plain-text"
 ```
 
-- **Slack, Notion, Google Docs, Chrome:** Pastes formatted bold, italics, lists, and clickable hyperlinks.
-- **Apple Mail, TextEdit, Pages:** Pastes native rich text (`public.rtf`).
-- **Terminal, Code Editors:** Pastes clean plain text (`public.utf8-plain-text`).
+- **Slack, Notion, Google Docs, Chrome:** Pastes formatted bold, italics, lists, tables, and clickable hyperlinks.
+- **Apple Mail, TextEdit, Pages:** Pastes native rich text (`public.rtf`) with real heading sizes, bullets, and tables.
+- **Terminal, Code Editors:** Pastes the original Markdown source (`public.utf8-plain-text`) — lossless.
+
+## Supported Formatting
+
+CommonMark plus the GitHub-flavored extensions Apple's engine parses:
+
+- Headings, **bold**, *italic*, ~~strikethrough~~, `inline code`
+- Links, plus bare-URL autolinks
+- Ordered and unordered lists, task lists (rendered as ☑ / ☐)
+- Tables, including per-column alignment
+- Fenced code blocks, blockquotes, horizontal rules
 
 ## Usage
 
@@ -53,7 +63,7 @@ Runs the [Swift Testing](https://developer.apple.com/documentation/testing) suit
 
 ## Technical Details
 
-- **Size:** ~110 KB standalone native binary.
-- **Speed:** ~5ms execution time.
+- **Size:** ~160 KB standalone native binary.
 - **Dependencies:** Zero external dependencies. Built directly on macOS's native `Foundation` CommonMark engine and Cocoa `AppKit` pasteboard APIs.
+- **Rendering:** Apple's Markdown parser emits semantic presentation intents, not visual styling — richcopy walks that intent tree to emit real HTML (`<h1>`, `<strong>`, `<table>`…), then derives the RTF flavor from that HTML via the Cocoa HTML importer.
 - **Structure:** Standard Swift Package Manager layout — `RichcopyCore` (library with the render/copy logic), `richcopy` (CLI executable), `RichcopyTests` (test target).
