@@ -4,46 +4,51 @@ import RichcopyCore
 
 // MARK: - Agent Skill Helpers
 
-private func agentSkillPaths() -> [URL] {
+private struct AgentSkillTarget {
+    let name: String
+    let directory: URL
+    var fileURL: URL { directory.appendingPathComponent("SKILL.md") }
+}
+
+private func detectedSkillTargets() -> [AgentSkillTarget] {
     let fm = FileManager.default
     let home = fm.homeDirectoryForCurrentUser
-    var paths: [URL] = []
+    var targets: [AgentSkillTarget] = []
 
-    let claudeDir = home.appendingPathComponent(".claude/skills")
-    let geminiDir = home.appendingPathComponent(".gemini/config/skills")
+    let claudeDir = home.appendingPathComponent(".claude/skills/richcopy")
+    let geminiDir = home.appendingPathComponent(".gemini/config/skills/richcopy")
 
-    if fm.fileExists(atPath: claudeDir.path) {
-        paths.append(claudeDir.appendingPathComponent("richcopy"))
+    if fm.fileExists(atPath: home.appendingPathComponent(".claude/skills").path) {
+        targets.append(AgentSkillTarget(name: "Claude Code", directory: claudeDir))
     }
-    if fm.fileExists(atPath: geminiDir.path) {
-        paths.append(geminiDir.appendingPathComponent("richcopy"))
+    if fm.fileExists(atPath: home.appendingPathComponent(".gemini/config/skills").path) {
+        targets.append(AgentSkillTarget(name: "Antigravity", directory: geminiDir))
     }
-    if paths.isEmpty {
-        paths.append(claudeDir.appendingPathComponent("richcopy"))
+    if targets.isEmpty {
+        targets.append(AgentSkillTarget(name: "Claude Code", directory: claudeDir))
     }
-    return paths
+    return targets
 }
 
 private func installAgentSkill() {
     let fm = FileManager.default
-    let targets = agentSkillPaths()
+    let targets = detectedSkillTargets()
     var installed: [String] = []
 
-    for dir in targets {
+    for target in targets {
         do {
-            try fm.createDirectory(at: dir, withIntermediateDirectories: true)
-            let fileURL = dir.appendingPathComponent("SKILL.md")
-            try richcopySkillDefinition.write(to: fileURL, atomically: true, encoding: .utf8)
-            installed.append(fileURL.path)
+            try fm.createDirectory(at: target.directory, withIntermediateDirectories: true)
+            try richcopySkillDefinition.write(to: target.fileURL, atomically: true, encoding: .utf8)
+            installed.append("  ✓ \(target.name) (\(target.fileURL.path))")
         } catch {
-            fputs("richcopy: warning: failed to install skill to \(dir.path): \(error.localizedDescription)\n", stderr)
+            fputs("richcopy: warning: failed to install skill to \(target.name): \(error.localizedDescription)\n", stderr)
         }
     }
 
     if !installed.isEmpty {
         print("Installed richcopy skill:")
-        for path in installed {
-            print("  ✓ \(path)")
+        for line in installed {
+            print(line)
         }
         print("\nFor other agents (ChatGPT, Cursor, OpenCode):")
         print("  richcopy --print-skill > <your-agent-rules-file>")
