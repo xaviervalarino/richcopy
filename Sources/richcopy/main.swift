@@ -90,36 +90,6 @@ private func installAgentSkill() {
     }
 }
 
-private func uninstallAgentSkill() {
-    let fm = FileManager.default
-    let home = fm.homeDirectoryForCurrentUser
-    let candidates = [
-        home.appendingPathComponent(".claude/skills/richcopy"),
-        home.appendingPathComponent(".gemini/config/skills/richcopy"),
-    ]
-    var removed: [String] = []
-
-    for dir in candidates {
-        if fm.fileExists(atPath: dir.path) {
-            do {
-                try fm.removeItem(at: dir)
-                removed.append(dir.path)
-            } catch {
-                fputs("richcopy: warning: failed to remove \(dir.path): \(error.localizedDescription)\n", stderr)
-            }
-        }
-    }
-
-    if !removed.isEmpty {
-        print("Removed richcopy skill:")
-        for path in removed {
-            print("  ✓ \(path)")
-        }
-    } else {
-        print("No installed richcopy skills found.")
-    }
-}
-
 // MARK: - CLI Command
 
 struct Richcopy: ParsableCommand {
@@ -146,9 +116,6 @@ struct Richcopy: ParsableCommand {
     @Flag(name: .customLong("install-skill"), help: "Install the richcopy skill for Claude Code and Antigravity agents.")
     var installSkill = false
 
-    @Flag(name: .customLong("uninstall-skill"), help: "Uninstall the richcopy skill from agent directories.")
-    var uninstallSkill = false
-
     @Flag(name: .customLong("print-skill"), help: "Print the SKILL.md definition to standard output.")
     var printSkill = false
 
@@ -166,10 +133,6 @@ struct Richcopy: ParsableCommand {
         }
         if installSkill {
             installAgentSkill()
-            return
-        }
-        if uninstallSkill {
-            uninstallAgentSkill()
             return
         }
         let input: String
