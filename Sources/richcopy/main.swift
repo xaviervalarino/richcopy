@@ -14,14 +14,20 @@ struct Richcopy: ParsableCommand {
           echo "**bold** [link](https://example.com)" | richcopy
           richcopy < file.md
           richcopy "Direct **markdown** string"
-        """,
-        version: "1.0.0"
+        """
     )
+
+    @Flag(name: [.customShort("V"), .long], help: "Show the version.")
+    var version = false
 
     @Argument(help: "Markdown text to copy. If omitted, reads from standard input.")
     var text: [String] = []
 
     func run() throws {
+        if version {
+            print("0.1.0")
+            return
+        }
         let input: String
         if !text.isEmpty {
             input = text.joined(separator: " ")
