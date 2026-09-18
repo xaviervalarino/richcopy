@@ -145,6 +145,39 @@ func htmlBody(from attributed: AttributedString, hardBreaks: Bool = true) -> Str
         }
     }
 
+    var lastClosedTopLevelKind: PresentationIntent.Kind?
+
+    func isListKind(_ kind: PresentationIntent.Kind) -> Bool {
+        switch kind {
+        case .unorderedList, .orderedList: return true
+        default: return false
+        }
+    }
+
+    func isHeaderKind(_ kind: PresentationIntent.Kind) -> Bool {
+        if case .header = kind { return true }
+        return false
+    }
+
+    func isParagraphKind(_ kind: PresentationIntent.Kind) -> Bool {
+        if case .paragraph = kind { return true }
+        return false
+    }
+
+    func shouldInsertSpacer(
+        from prev: PresentationIntent.Kind,
+        to next: PresentationIntent.Kind
+    ) -> Bool {
+        if isParagraphKind(prev) && isListKind(next) { return false }
+        if isHeaderKind(prev) { return false }
+        if isParagraphKind(prev) && isParagraphKind(next) { return true }
+        if isListKind(prev) && (isParagraphKind(next) || isListKind(next)) { return true }
+        if isHeaderKind(next) { return true }
+        if case .blockQuote = prev, isParagraphKind(next) { return true }
+        if case .codeBlock = prev, isParagraphKind(next) { return true }
+        return false
+    }
+
     for run in attributed.runs {
         let path = run.presentationIntent.map { Array($0.components.reversed()) } ?? []
 
@@ -155,7 +188,18 @@ func htmlBody(from attributed: AttributedString, hardBreaks: Bool = true) -> Str
         for entry in stack[common...].reversed() {
             out += entry.close
         }
+        if common == 0, let first = stack.first {
+            lastClosedTopLevelKind = first.component.kind
+        }
         stack.removeSubrange(common...)
+
+        if common == 0, let prev = lastClosedTopLevelKind, let next = path.first?.kind {
+            if hardBreaks && !out.isEmpty && shouldInsertSpacer(from: prev, to: next) {
+                out += "<p><br></p>"
+            }
+            lastClosedTopLevelKind = nil
+        }
+
         for component in path[common...] {
             let tag = tags(for: component, path: path)
             out += tag.open

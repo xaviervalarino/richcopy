@@ -52,6 +52,31 @@ private func renderedHTML(_ markdown: String) throws -> String {
     #expect(attributed.string.contains("Line 1 Line 2"))
 }
 
+@MainActor @Test func blockSpacersPreserveBlankLinesByDefault() throws {
+    let md = """
+    Section 1
+    Some text
+
+    Section 2
+    * Item A
+    * Item B
+
+    Section 3
+    """
+    let html = try renderedHTML(md)
+    #expect(html.contains("</p><p><br></p><p>"))
+    #expect(html.contains("</ul><p><br></p><p>"))
+    #expect(!html.contains("</p><p><br></p><ul>"))
+}
+
+@MainActor @Test func noBreaksOptionDisablesBlockSpacers() throws {
+    let md = "Paragraph 1\n\nParagraph 2"
+    let rendered = try render(markdown: md, hardBreaks: false)
+    let html = try #require(String(data: rendered.html, encoding: .utf8))
+    #expect(!html.contains("<p><br></p>"))
+    #expect(html.contains("<p>Paragraph 1</p><p>Paragraph 2</p>"))
+}
+
 @MainActor @Test func linksAndAutolinksWork() throws {
     let html = try renderedHTML("[named](https://example.com/a) and bare https://example.com/b")
     #expect(html.contains("<a href=\"https://example.com/a\">named</a>"))
