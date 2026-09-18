@@ -412,7 +412,15 @@ EOF
 - **`--no-breaks`:** Preserve standard CommonMark soft line breaks (collapses single newlines into spaces). By default, `richcopy` treats single newlines as hard breaks (`<br>`) so multiline stacks paste cleanly into chat and notes.
 - **Default (with RTF):** Use default `richcopy` (without `--no-rtf`) only when pasting specifically into **TextEdit** (in rich text mode) or other native Cocoa `NSTextView` applications.
 
-### 3. Fallback
+### 3. Application Quirks & Best Practices
+
+- **Slack Formatting & Layout:**
+  - **Avoid Deeply Nested Lists:** Slack's rich-text paste parser breaks on multi-level nested lists (3+ levels of bullet indentation), creating excessive margins, broken markers, and detached line breaks.
+  - **Flatten Hierarchies with Section Whitespace:** Use bold headings (`**Category**`) separated by blank lines, and keep list items to a single level of indentation.
+  - **Anchor Bolding Only:** Restrict bolding to lead-in anchors (`* **Before:**`, `* **Why:**`). Never scatter bold words mid-sentence unless highlighting a critical keyword or explicitly confirmed.
+  - **Fallback to `pbcopy`:** If complex nested formatting is required, use plain Slack-flavored markdown with standard `pbcopy` instead of rich HTML.
+
+### 4. Fallback
 If `richcopy` is not installed or fails:
 ```bash
 echo "$TEXT" | pbcopy
