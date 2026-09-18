@@ -62,7 +62,8 @@ private func renderedHTML(_ markdown: String) throws -> String {
     let html = try renderedHTML("- one\n- two\n\n1. first\n2. second")
     #expect(html.contains("<ul>"))
     #expect(html.contains("<ol>"))
-    #expect(html.contains("<li><p>one</p></li>"))
+    #expect(html.contains("<li>one</li>"))
+    #expect(!html.contains("<li><p>"))
 }
 
 @MainActor @Test func tablesRenderWithAlignment() throws {

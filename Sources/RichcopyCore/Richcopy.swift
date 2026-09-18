@@ -91,6 +91,12 @@ func htmlBody(from attributed: AttributedString, hardBreaks: Bool = true) -> Str
     ) -> (open: String, close: String) {
         switch component.kind {
         case .paragraph:
+            if path.contains(where: {
+                if case .listItem = $0.kind { return true }
+                return false
+            }) {
+                return ("", "")
+            }
             return ("<p>", "</p>")
         case .header(let level):
             let capped = max(1, min(level, 6))
