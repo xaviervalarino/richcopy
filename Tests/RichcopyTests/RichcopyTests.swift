@@ -31,6 +31,27 @@ private func renderedHTML(_ markdown: String) throws -> String {
     #expect(html.contains("<code>code</code>"))
 }
 
+@MainActor @Test func singleNewlinesConvertToHardBreaksByDefault() throws {
+    let html = try renderedHTML("Line 1\nLine 2")
+    #expect(html.contains("Line 1<br>Line 2"))
+
+    let rendered = try render(markdown: "Line 1\nLine 2")
+    let rtfData = try #require(rendered.rtf)
+    let attributed = try #require(NSAttributedString(rtf: rtfData, documentAttributes: nil))
+    #expect(attributed.string.contains("Line 1\nLine 2"))
+}
+
+@MainActor @Test func noBreaksOptionPreservesCommonMarkSoftBreaks() throws {
+    let rendered = try render(markdown: "Line 1\nLine 2", hardBreaks: false)
+    let html = try #require(String(data: rendered.html, encoding: .utf8))
+    #expect(html.contains("Line 1 Line 2"))
+    #expect(!html.contains("<br>"))
+
+    let rtfData = try #require(rendered.rtf)
+    let attributed = try #require(NSAttributedString(rtf: rtfData, documentAttributes: nil))
+    #expect(attributed.string.contains("Line 1 Line 2"))
+}
+
 @MainActor @Test func linksAndAutolinksWork() throws {
     let html = try renderedHTML("[named](https://example.com/a) and bare https://example.com/b")
     #expect(html.contains("<a href=\"https://example.com/a\">named</a>"))
@@ -145,4 +166,5 @@ private func renderedHTML(_ markdown: String) throws -> String {
     #expect(richcopySkillDefinition.contains("description:"))
     #expect(richcopySkillDefinition.contains("cat <<'EOF' | richcopy --no-rtf"))
     #expect(richcopySkillDefinition.contains("pbcopy"))
+    #expect(richcopySkillDefinition.contains("--no-breaks"))
 }

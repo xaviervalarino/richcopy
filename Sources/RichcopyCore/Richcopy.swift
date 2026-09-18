@@ -37,7 +37,7 @@ public struct RenderedMarkdown {
 /// back to the HTML importer for tables. The plain-text flavor is the original
 /// Markdown source, which is lossless and pastes cleanly into editors.
 @MainActor
-public func render(markdown: String, includeRTF: Bool = true) throws -> RenderedMarkdown {
+public func render(markdown: String, includeRTF: Bool = true, hardBreaks: Bool = true) throws -> RenderedMarkdown {
     let trimmed = markdown.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else {
         throw RichcopyError.emptyInput
@@ -47,10 +47,10 @@ public func render(markdown: String, includeRTF: Bool = true) throws -> Rendered
         markdown: markdown,
         options: .init(interpretedSyntax: .full, failurePolicy: .returnPartiallyParsedIfPossible)
     )
-    let html = htmlDocument(body: htmlBody(from: attributed))
+    let html = htmlDocument(body: htmlBody(from: attributed, hardBreaks: hardBreaks))
     let rtf: Data?
     if includeRTF {
-        rtf = try generateRTF(from: attributed, fallbackHTML: html)
+        rtf = try generateRTF(from: attributed, fallbackHTML: html, hardBreaks: hardBreaks)
     } else {
         rtf = nil
     }
@@ -78,7 +78,7 @@ public func copy(_ rendered: RenderedMarkdown, to pasteboard: NSPasteboard = .ge
 
 // MARK: - Intent tree → HTML
 
-func htmlBody(from attributed: AttributedString) -> String {
+func htmlBody(from attributed: AttributedString, hardBreaks: Bool = true) -> String {
     var out = ""
     // Open blocks, outermost first, each with its precomputed closing tag.
     var stack: [(component: PresentationIntent.IntentType, close: String)] = []
@@ -168,7 +168,7 @@ func htmlBody(from attributed: AttributedString) -> String {
             continue
         }
         if inline.contains(.softBreak) {
-            out += " "
+            out += hardBreaks ? "<br>" : " "
             continue
         }
 
@@ -231,7 +231,7 @@ private func htmlDocument(body: String) -> String {
 // MARK: - RTF Generation
 
 @MainActor
-private func generateRTF(from attributed: AttributedString, fallbackHTML: String) throws -> Data {
+private func generateRTF(from attributed: AttributedString, fallbackHTML: String, hardBreaks: Bool = true) throws -> Data {
     let hasTable = attributed.runs.contains { run in
         run.presentationIntent?.components.contains {
             if case .table = $0.kind { return true }
@@ -241,11 +241,11 @@ private func generateRTF(from attributed: AttributedString, fallbackHTML: String
     if hasTable {
         return try rtfData(fromHTML: fallbackHTML)
     }
-    return try directRTFData(from: attributed)
+    return try directRTFData(from: attributed, hardBreaks: hardBreaks)
 }
 
 @MainActor
-private func directRTFData(from attributed: AttributedString) throws -> Data {
+private func directRTFData(from attributed: AttributedString, hardBreaks: Bool = true) throws -> Data {
     let out = NSMutableAttributedString()
     var lastBlockIdentity: Int?
     var isNewBlock = true
@@ -298,7 +298,7 @@ private func directRTFData(from attributed: AttributedString) throws -> Data {
             continue
         }
         if inline.contains(.softBreak) {
-            out.append(NSAttributedString(string: " "))
+            out.append(NSAttributedString(string: hardBreaks ? "\n" : " "))
             continue
         }
 
@@ -409,6 +409,7 @@ EOF
 
 ### 2. Flag Selection
 - **`--no-rtf` (Recommended for speed):** Runs in ~20 ms. Most macOS apps (Slack, Notion, Google Docs, Apple Mail, Apple Notes, Discord, web browsers) pull `public.html` directly and render full formatting without RTF.
+- **`--no-breaks`:** Preserve standard CommonMark soft line breaks (collapses single newlines into spaces). By default, `richcopy` treats single newlines as hard breaks (`<br>`) so multiline stacks paste cleanly into chat and notes.
 - **Default (with RTF):** Use default `richcopy` (without `--no-rtf`) only when pasting specifically into **TextEdit** (in rich text mode) or other native Cocoa `NSTextView` applications.
 
 ### 3. Fallback
