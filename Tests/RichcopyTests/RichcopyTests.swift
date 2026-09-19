@@ -193,5 +193,5 @@ private func renderedHTML(_ markdown: String) throws -> String {
     #expect(richcopySkillDefinition.contains("cat <<'EOF' | richcopy --no-rtf"))
     #expect(richcopySkillDefinition.contains("pbcopy"))
     #expect(richcopySkillDefinition.contains("--no-breaks"))
-    #expect(richcopySkillDefinition.contains("Slack Layout & Styling Preferences:"))
+    #expect(richcopySkillDefinition.contains("Slack & Chat Layout:"))
 }
