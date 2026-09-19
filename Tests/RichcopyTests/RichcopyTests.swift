@@ -195,3 +195,17 @@ private func renderedHTML(_ markdown: String) throws -> String {
     #expect(richcopySkillDefinition.contains("--no-breaks"))
     #expect(richcopySkillDefinition.contains("Slack & Chat Layout:"))
 }
+
+@Test func skillDefinitionMatchesSkillFile() throws {
+    let skillURL = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+        .appendingPathComponent("skills/richcopy/SKILL.md")
+    guard FileManager.default.fileExists(atPath: skillURL.path) else { return }
+    let fileContent = try String(contentsOf: skillURL, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
+    #expect(richcopySkillDefinition.trimmingCharacters(in: .whitespacesAndNewlines) == fileContent)
+}
+
+@Test func versionIsSet() {
+    #expect(richcopyVersion == "0.2.0")
+}

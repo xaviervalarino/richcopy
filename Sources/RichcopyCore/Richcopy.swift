@@ -428,7 +428,9 @@ private func rtfData(fromHTML html: String) throws -> Data {
     )
 }
 
-// MARK: - Agent Skill Definition
+// MARK: - Version & Agent Skill Definition
+
+public let richcopyVersion = "0.2.0"
 
 public let richcopySkillDefinition = """
 ---

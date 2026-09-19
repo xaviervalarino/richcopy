@@ -17,7 +17,8 @@ struct Richcopy: ParsableCommand {
           richcopy < file.md
           richcopy "Direct **markdown** string"
           richcopy --print-skill > ~/.claude/skills/richcopy/SKILL.md
-        """
+        """,
+        version: richcopyVersion
     )
 
     @Flag(name: .customLong("no-rtf"), help: "Skip RTF generation for ultra-fast copying (HTML + plain text). Most macOS apps (Slack, Notion, Google Docs, Apple Mail, Apple Notes) paste rich text directly from HTML.")
@@ -37,7 +38,7 @@ struct Richcopy: ParsableCommand {
 
     func run() throws {
         if version {
-            print("0.1.0")
+            print(richcopyVersion)
             return
         }
         if printSkill {
