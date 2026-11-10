@@ -64,9 +64,24 @@ private func renderedHTML(_ markdown: String) throws -> String {
     Section 3
     """
     let html = try renderedHTML(md)
-    #expect(html.contains("</p><p><br></p><p>"))
+    #expect(html.contains("</p><p><br></p><div>Section 2</div><ul>"))
     #expect(html.contains("</ul><p><br></p><p>"))
-    #expect(!html.contains("</p><p><br></p><ul>"))
+    #expect(!html.contains("<p><br></p><ul>"))
+}
+
+/// Slack pastes a gap between a `<p>` and a following list, but none after a `<div>`.
+@MainActor @Test func leadInBeforeListRendersAsDiv() throws {
+    for md in ["Lead-in:\n- Item A\n- Item B", "Lead-in:\n\n1. Item A\n2. Item B"] {
+        let html = try renderedHTML(md)
+        #expect(html.contains("<div>Lead-in:</div><"))
+        #expect(!html.contains("<p>Lead-in:</p>"))
+    }
+}
+
+@MainActor @Test func noBreaksKeepsParagraphBeforeList() throws {
+    let rendered = try render(markdown: "Lead-in:\n- Item A", hardBreaks: false)
+    let html = try #require(String(data: rendered.html, encoding: .utf8))
+    #expect(html.contains("<p>Lead-in:</p><ul>"))
 }
 
 @MainActor @Test func noBreaksOptionDisablesBlockSpacers() throws {

@@ -194,6 +194,14 @@ func htmlBody(from attributed: AttributedString, hardBreaks: Bool = true) -> Str
         stack.removeSubrange(common...)
 
         if common == 0, let prev = lastClosedTopLevelKind, let next = path.first?.kind {
+            // Slack pastes a gap between a <p> and the list after it, and none after a <div>.
+            // Escaped paragraph text holds no "<p>", so the last one opens this paragraph.
+            if hardBreaks, isParagraphKind(prev), isListKind(next), out.hasSuffix("</p>"),
+               let open = out.range(of: "<p>", options: .backwards) {
+                out.removeLast("</p>".count)
+                out.replaceSubrange(open, with: "<div>")
+                out += "</div>"
+            }
             if hardBreaks && !out.isEmpty && shouldInsertSpacer(from: prev, to: next) {
                 out += "<p><br></p>"
             }
